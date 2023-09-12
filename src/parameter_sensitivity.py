@@ -35,8 +35,8 @@ from sklearn.dummy import DummyClassifier
 
 def main():
 
-	MAX_SCALES = 2
-	MAX_MOMENTS = 2
+	MAX_SCALES = 6
+	MAX_MOMENTS = 6
 	network_path_base = "../data/networks/cri"
 	genesets = ['auslander','LINCS']
 	geneset_base = "../data/genesets/"

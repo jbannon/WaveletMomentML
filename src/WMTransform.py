@@ -127,8 +127,7 @@ class DiffusionWMT(WaveletMomentTransform):
 		if diffusion_op in ['diffu','diffusion']:
 			max_J = self.numScales + 1
 			D_invsqrt =  np.diag(1/np.sqrt(np.sum(self.adjacency_matrix,axis=1)))
-			print(D_invsqrt)
-			print(D_invsqrt.shape)
+			
 			
 	
 			A = D_invsqrt @ self.adjacency_matrix @ D_invsqrt
@@ -154,9 +153,4 @@ class DiffusionWMT(WaveletMomentTransform):
 		self.H = H 
 
 
-if __name__ == '__main__':
-	G = nx.fast_gnp_random_graph(10,0.6)
-	A = nx.adjacency_matrix(G).todense()
-	op1 = DiffusionWMT(3,3,A, 'diffu',True)
-	op2 = DiffusionWMT(3,3,A, 'geom',True)
 		
