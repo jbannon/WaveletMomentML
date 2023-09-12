@@ -1,0 +1,8 @@
+Sparse Network Has:
+	 12195 nodes
+	 117293 edges
+	 11926-node LCC
+Dense Network Has:
+	 14254 nodes
+	 218702 edges
+	 14100-node LCC
