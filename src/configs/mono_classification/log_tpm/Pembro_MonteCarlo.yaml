@@ -1,19 +1,17 @@
-# ATEZO UNWEIGHTED 
 DATA_PARAMS:
-  drug: 'Atezo'
-  gex_units: 'tpm'
+  drug: 'Pembro'
+  gex_units: 'log_tpm'
   expression_path: "../data/expression/cri"
 
 EXPERIMENT_PARAMS:
   rng_seed: 12345
-  n_splits: 10 # not used for LOO or monte carlo
+  n_splits: 10
   shuffle: True
-  models: ['most_frequent','uniform','stratified','LR','SVC','KNN','RBF']
-  cv_score: 'balanced_accuracy'
+  models: ['LR','most_frequent','uniform','stratified','SVC','RBF','KNN']
+  cv_score: 'roc_auc'
   res_path: "../data/results/"
-  split_type: 'stratified'
-  n_trials: 100 # not used for kfold or LOO
-  
+  split_type: 'montecarlo'
+  n_trials: 100  
 
 
 GENESET_PARAMS:

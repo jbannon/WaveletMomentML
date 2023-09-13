@@ -52,7 +52,7 @@ def main(
 
 
 	split_type = split_type.lower()
-	network_file = "{base}/{type}/{weight}.pickle".format(base = net_basepath,type = network_types[0], weight= weightings[0])
+	network_file = "{base}/{type}/{weight}.pickle".format(base = net_basepath,type = network_types[0], weight = weightings[0])
 	
 	with open(network_file, 'rb') as istream:
 		G = pickle.load(istream)
@@ -152,13 +152,13 @@ def main(
 					
 						for k in geneset_dict.keys():
 							feature_string = "{g}_{k}".format(g=geneset,k=k)
-							print("{k}:\t {c}".format(k= k, c =len(geneset_dict[k])))
-							print(len(geneset_dict[k]))
+							print("{k}:\t {c} genes".format(k= k, c =len(geneset_dict[k])))
+							
 						
 							X_ = X[:,[dataSet.genes_to_idx[v] for v in geneset_dict[k]]]
 
 							if k == 'wm':
-								transformer = DiffusionWMT(4,3,nx.adjacency_matrix(LCC_graph).todense(),True)
+								transformer = DiffusionWMT(2,3,nx.adjacency_matrix(LCC_graph).todense(),'diffu',True)
 								X_ = transformer.computeTransform(X_)
 
 							if split_type == 'stratified':

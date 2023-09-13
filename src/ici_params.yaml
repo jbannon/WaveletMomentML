@@ -1,7 +1,7 @@
 # ATEZO UNWEIGHTED 
 DATA_PARAMS:
   drug: 'Atezo'
-  gex_units: 'tpm'
+  gex_units: 'log_tpm'
   expression_path: "../data/expression/cri"
 
 EXPERIMENT_PARAMS:
@@ -11,13 +11,13 @@ EXPERIMENT_PARAMS:
   models: ['LR'] #['most_frequent','uniform','stratified','LR']
   cv_score: 'roc_auc'
   res_path: "../data/results/"
-  split_type: 'loo'
+  split_type: 'montecarlo'
   n_trials: 100  
 
 
 GENESET_PARAMS:
   geneset_base: "../data/genesets/"
-  genesets: ['auslander'] #,'LINCS','COSMIC','CD8T','TCE','CAF','TAM','GeneBio','target']
+  genesets: ['auslander','LINCS','COSMIC','CD8T','TCE','CAF','TAM','GeneBio','target']
   target_cutoff: 200
 
 

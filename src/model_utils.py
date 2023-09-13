@@ -161,7 +161,6 @@ def run_monte_carlo_trials(
 		f1 = f1_score(y_test,pred_bins)
 
 		
-		results['round'].append(rep)
 		results['iter'].append(i)
 		results['drug'].append(drug)
 		results['tissue'].append(tissue)
