@@ -24,7 +24,7 @@ def load_ICIDataSet(
         base_path = base_path[:-1]
     
     filePath= base_path+"/"+drug+"/"+tissue+"/"+gex_units+".pickle"
-    print(filePath)
+    # print(filePath)
     with open(filePath, 'rb') as istream:
         DS = pk.load(istream)
 
@@ -38,7 +38,7 @@ def make_filepath(
 		extension = "."+extension if extension[0]!="." else extension
 	else:
 		extension = ""
-	print(extension)
+	# print(extension)
 	components = [comp[:-1] if comp[-1]== "/" else comp for comp in components]
 	fpath = "".join(["/".join(components),extension])
 	return fpath

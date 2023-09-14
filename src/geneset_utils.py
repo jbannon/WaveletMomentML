@@ -21,7 +21,7 @@ def load_geneset(
         if isinstance(lines, list):
             if len(lines) ==1:
                 lines = lines[0].split(":")
-                print(lines)
+                # print(lines)
         else:
             lines = lines.split(":")
         

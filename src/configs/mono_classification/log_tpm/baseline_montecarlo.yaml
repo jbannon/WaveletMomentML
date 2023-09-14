@@ -1,0 +1,8 @@
+PARAMETERS:
+  gex_units: 'log_tpm'
+  genesets: ['CD8T','TCE','CAF','TAM','GeneBio','target']
+  models: ['most_frequent','uniform','stratified','SVC','RBF','KNN','LR']
+  rng_seed: 1234
+  split_type: 'montecarlo'
+  geneset_base: '../data/genesets'
+  base_path: '../data/expression/cri'

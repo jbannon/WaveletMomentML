@@ -28,16 +28,16 @@ def make_model_and_param_grid(
 	
 	if model_name == 'SVC':
 		model = (prefix, LinearSVC())
-		param_grid = {'dual':['auto'],'C':np.arange(0.1, 1, 0.1)}
+		param_grid = {'dual':['auto'],'C':[0.5,1]}
 	elif model_name == 'KNN':
 		model = (prefix, KNeighborsClassifier())
 		param_grid = {'n_neighbors':np.arange(2,10), 'weights':['uniform','distance']}
 	elif model_name == 'RBF':
 		model = (prefix, SVC(kernel = 'rbf'))
-		param_grid = {'gamma':['scale','auto'],'C':np.arange(0.1, 1, 0.1), 'class_weight':['balanced'] }
+		param_grid = {'gamma':['scale','auto'],'C':[0.5,1], 'class_weight':['balanced'] }
 	elif model_name == 'LR':
 		model = (prefix, LogisticRegression())
-		param_grid = {'penalty':['l2'], 'max_iter':[10**10], 'solver':['lbfgs'], 'C':np.arange(0.1, 1, 0.1), 'class_weight':['balanced'] }
+		param_grid = {'penalty':['l2'], 'max_iter':[10**10], 'solver':['lbfgs'], 'C':[0.5,1], 'class_weight':['balanced'] }
 
 	if standardize:
 		model = [('scaler',StandardScaler())]+[model]

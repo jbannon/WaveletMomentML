@@ -7,38 +7,51 @@ import sys
 L = os.listdir("../results/")
 
 
-# for file in L:
-# 	drug, model, tissue = file.split("_")
-# 	tissue, _ = tissue.split(".")
-# 	print(drug)
-# 	print(model)
-# 	print(tissue)
-# 	fname = "../results/" + file
-# 	df = pd.read_csv(fname)
-# 	fig = sns.boxplot(x="dimRed", y="test_acc",
-#             hue="dimRed",
-#             data=df)
-# 	fig.set(title = "Test Accuracy Predicting Response to {d} with {m} in {t}".format(d=drug,m=model, t=tissue),
-# 		xlabel='Dimensionality Reduction Method', ylabel='Test Accuracy')
-# 	plt.legend(title='Method')
-# 	plt.savefig("../figs/{d}_{m}_{t}.png".format(d=drug,m=model, t=tissue))
-# 	plt.close()
+df = pd.DataFrame()
+for t in ['ALL', 'SKCM','STAD']:
+	temp = pd.read_csv("../results/mono_classification/montecarlo/log_tpm/Pembro/{t}/results.csv".format(t=t))
+	df = pd.concat([df,temp],axis=0)
 
 
-for file in L:
-	drug, tissue, model = file.split("_")
-	model,_ = model.split(".")
-	tissue_string = "All Tissues" if tissue =='ALL' else tissue
-	if model == 'dummies':
-		fname = "../results/"+file
-		df = pd.read_csv(fname)
-		for split_type in ['stratif','kfold']:
-			df_ = df[df['Split_Type']== split_type]
-			split_string = "Stratified" if split_type == 'stratif' else "random_splits"
 
-			fig = sns.boxplot(x="clf_type", y="test_acc", hue="clf_type", data=df_)
-			fig.set(title = "Dummy Classifier Performance\n {d} in {t}. {s} Splits".format(d=drug, t=tissue,s=split_string),
-				xlabel='Dummy Classifier Type', ylabel='Test Accuracy')
-			plt.savefig("../figs/DUMMIES_{d}_{t}_{s}.png".format(d=drug, t=tissue_string,s=split_string))
-			plt.close()
-		
+
+print(df.head())
+print(df.columns)
+print(pd.unique(df['model']))
+print(pd.unique(df['feature']))
+print(df.shape)
+
+
+
+# change to [geneset, transform]
+
+dummy_models = ['most_frequent', 'uniform' ,'stratified']
+
+# for 
+
+dummy_info = df[df['model'].isin(dummy_models)]
+
+print(dummy_info.columns)
+
+
+# for measure in ['acc','bal_acc','f1']:
+# 	temp = dummy_info[['tissue','model',measure]]
+# 	sns.boxplot(x="tissue", y= measure,
+#             hue= 'model',
+#             data=temp)
+# 	plt.show()
+
+
+auslander_models = ['auslander_common', 'auslander_LCC', 'auslander_wm']
+
+df_ = df[df['feature'].isin(auslander_models)]
+for measure in ['acc','bal_acc','f1']:
+	for model in ['LR','RBF','SVC']:
+		temp = df_[df_['model']==model]
+		sns.boxplot(x="tissue", y= measure,
+            hue= 'feature',
+            data = temp).set(title = model)
+		plt.savefig("../figs/{m1}_{m2}.png".format(m1 = model, m2 = measure))
+		plt.close()
+
+

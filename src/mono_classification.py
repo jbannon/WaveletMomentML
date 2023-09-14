@@ -113,6 +113,7 @@ def main(
 
 
 			else:
+				
 				standardize_features = True
 				prefix = 'clf'
 
@@ -139,7 +140,7 @@ def main(
 						common_features = list(set(genes).intersection(set(dataSet.genes_to_idx.keys())))
 
 						LCC_graph = graph_utils.harmonize_graph_and_geneset(G,common_features)
-						if len(LCC_graph.nodes())<10:
+						if len(LCC_graph.nodes())<10:	
 							geneset_dict = {'common':common_features}
 							
 						else:
