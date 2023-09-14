@@ -6,3 +6,5 @@ PARAMETERS:
   split_type: 'stratified'
   geneset_base: '../data/genesets'
   base_path: '../data/expression/cri'
+  n_splits: 10
+  n_trials: 100

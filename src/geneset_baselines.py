@@ -35,11 +35,11 @@ def main(
 	config:Dict
 	)->None:
 	
-	gex_units, genesets, models, rng_seed, split_type, geneset_base, base_path = io_utils.unpack_parameters(config['PARAMETERS'])
+	gex_units, genesets, models, rng_seed, split_type, geneset_base, base_path, n_splits, n_trials = io_utils.unpack_parameters(config['PARAMETERS'])
 
 	rng = np.random.RandomState(seed = rng_seed)
 
-	
+
 	if split_type == 'stratified':
 		splitter = StratifiedKFold(n_splits = n_splits, shuffle = True, random_state = rng)
 
