@@ -2,11 +2,8 @@ import numpy as np
 from sklearn.utils import check_array, check_random_state
 from sklearn.base import BaseEstimator, TransformerMixin
 import sys 
-import io_utils, utils, model_utils, geneset_utils, graph_utils
-
 import pickle as pk 
 import networkx as nx
-from sklearn.neighbors import KNeighborsClassifier
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -42,28 +39,18 @@ class WaveletMomentTransform():
 	def computeTransform(self,
 		X:np.ndarray,
 		) -> np.ndarray:
-
-
-	
 		
 		S = X.shape[0]
 		N = X.shape[1]
 		
+
 		new_X = self.H @ X.T
 		
-
 		exponents = np.arange(1,self.maxMoment+1)
-		
-		# sys.exit(1)
-		if np.isnan(new_X).any():
-			print("self reporting an issue with scale {J} and max moment {p}".format(J=self.J,p=self.p_max))
-			sys.exit(1)
+	
 		X_res= np.array([])
 
-		
 		for s in range(S):
-			
-			
 			sample_transforms = new_X[:,:,s]
 			sample_coeffs = np.array([])
 
@@ -84,7 +71,7 @@ class WaveletMomentTransform():
 					mu = np.mean(sample_transforms, axis=1, keepdims = True)
 					sigma = np.std(sample_transforms, axis=1, keepdims = True)
 					coeffs = (sample_transforms - mu)/sigma
-					coeffs = np.mean(np.power(coeffs,exp),axis=1)
+					coeffs = np.sum(np.power(coeffs,exp),axis=1)
 
 				else:
 
@@ -92,17 +79,12 @@ class WaveletMomentTransform():
 				
 				sample_coeffs = np.hstack([sample_coeffs, coeffs]) if sample_coeffs.size else coeffs
 
-
-
-			
-			
-
 				
 			X_res = np.vstack( [X_res, sample_coeffs]) if X_res.size else sample_coeffs
 		
 		
 		if np.isnan(X_res).any():
-			print("self reporting an issue with scale {J} and max moment {p}".format(J=self.J,p=self.p_max))
+			print("self reporting an issue with scale {J} and max moment {p}".format(J=self.numScales, p=self.maxMoment))
 			sys.exit(1)
 		return X_res
 		
@@ -113,44 +95,99 @@ class DiffusionWMT(WaveletMomentTransform):
 		numScales:int,
 		maxMoment:int,
 		adjacency_matrix:np.ndarray,
-		diffusion_op: 'diffu',
-		central:bool):
+		central:bool = True):
 
 		super().__init__(numScales, maxMoment, adjacency_matrix,central)
 
 
-		diffusion_op = diffusion_op.lower()
+		
 		N  = self.adjacency_matrix.shape[0]
-		assert diffusion_op in ['diffu','diffusion','geom','geometric']
-
 		
-		if diffusion_op in ['diffu','diffusion']:
-			max_J = self.numScales + 1
-			D_invsqrt =  np.diag(1/np.sqrt(np.sum(self.adjacency_matrix,axis=1)))
-			
-			
+		max_J = self.numScales
+		
+		D_invsqrt =  np.diag(1/np.sqrt(np.sum(self.adjacency_matrix,axis=1)))
+		
+		A = D_invsqrt @ self.adjacency_matrix @ D_invsqrt
+		
 	
-			A = D_invsqrt @ self.adjacency_matrix @ D_invsqrt
+		T = 0.5*(np.eye(A.shape[0])+A)
 		
-			T = 0.5*(np.eye(A.shape[0])+A)
-			H = (np.eye(N) - T).reshape(1, N, N)
+		H = (np.eye(N) - T).reshape(1, N, N)
 
-		else:
-			max_J = self.numScales + 1
-			D_inv = np.diag(1/np.sum(self.adjacency_matrix,axis=1))
-			
-			T = 0.5*(np.eye(N) + self.adjacency_matrix@D_inv)
-			H = np.array([])
-
+		
 
 			
 
 		for j in range(1,max_J):
+			# print("computing {j}".format(j=j))
 			new_wavelet = np.linalg.matrix_power(T,2**(j-1)) - np.linalg.matrix_power(T,2**j)
 			H = np.concatenate((H,new_wavelet.reshape(1,N,N)),axis=0) if H.size else new_wavelet.reshape(1,N,N)
-		# print(H)
-		# print(H.shape)
+		
+		
 		self.H = H 
 
+
+class DiffusionWaveletExpansion():
+	def __init__(self,
+		numScales:int,
+		adjacency_matrix:np.ndarray):
+
+		assert adjacency_matrix.shape[0] == adjacency_matrix.shape[1], "adjacency matrix must be square"
+		# assert (adjacency_matrix == adjacency_matrix.T).all(), "adjacency_matrix must be symmetric"
+
+
+		self.numScales = numScales
+		self.adjacency_matrix = adjacency_matrix.copy()
+		
+		
+		N  = self.adjacency_matrix.shape[0]
+		
+		max_J = self.numScales
+		
+		D_invsqrt =  np.diag(1/np.sqrt(np.sum(self.adjacency_matrix,axis=1)))
+		
+		A = D_invsqrt @ self.adjacency_matrix @ D_invsqrt
+		
+	
+		T = 0.5*(np.eye(A.shape[0])+A)
+		
+		H = (np.eye(N) - T).reshape(1, N, N)
+
+		
+		for j in range(1,max_J):
+			# print("computing {j}".format(j=j))
+			new_wavelet = np.linalg.matrix_power(T,2**(j-1)) - np.linalg.matrix_power(T,2**j)
+			H = np.concatenate((H,new_wavelet.reshape(1,N,N)),axis=0) if H.size else new_wavelet.reshape(1,N,N)
+		
+		
+		self.H = H 
+
+
+
+
+
+	def computeTransform(self,
+		X:np.ndarray,
+		) -> np.ndarray:
+		
+		S = X.shape[0]
+		N = X.shape[1]
+		
+
+		new_X = self.H @ X.T
+		X_res= np.array([])
+		
+		for i in range(new_X.shape[0]):
+			X_res= np.hstack( [X_res, new_X[i,:,:].T]) if X_res.size else new_X[i,:,:].T
+		
+		atoms = np.array([])
+		for i in range(self.H.shape[0]):
+			atoms = np.vstack( [atoms, self.H[i,:,:]]) if atoms.size else self.H[i,:,:]
+
+		
+		
+		
+		
+		return X_res, atoms 
 
 		

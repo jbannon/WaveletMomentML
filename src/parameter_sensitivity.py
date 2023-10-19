@@ -1,158 +1,177 @@
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.metrics import brier_score_loss, log_loss
 import sys 
 import os 
 import argparse
 import yaml 
 from typing import Union, List, Dict, Tuple
-
+# import io_utils, utils, model_utils, geneset_utils, graph_utils
 import numpy as np
 import pickle 
 import networkx as nx 
 import pandas as pd
+import utils
 
-from sklearn.model_selection import LeaveOneOut,GridSearchCV, KFold, StratifiedKFold
+
+from sklearn.model_selection import train_test_split, GridSearchCV
 
 from sklearn.preprocessing import RobustScaler, StandardScaler
-from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC, LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
 
-from WMTransform import DiffusionWMT
+from WMTransform import WaveletMomentTransform, DiffusionWMT
 from collections import defaultdict
+from sklearn.metrics import confusion_matrix, roc_auc_score, auc, precision_recall_curve, accuracy_score,balanced_accuracy_score
 
-from sklearn.metrics import confusion_matrix, roc_auc_score, auc,  average_precision_score, f1_score
-from sklearn.metrics import precision_recall_curve, accuracy_score, balanced_accuracy_score
 import tqdm 
-
-from sklearn.preprocessing import FunctionTransformer
-import io_utils, utils, model_utils, geneset_utils, graph_utils
 from sklearn.dummy import DummyClassifier
 
-
+from sklearn.preprocessing import Normalizer
 
 
 def main():
+	data_dir = "../data/expression/"
+	MAX_SCALES = 3
+	MAX_MOMENTS = 4
+	n_iter = 10
+	preproc_map= {'center':('preproc',StandardScaler(with_std=False)),'standardize':('preproc',StandardScaler()),
+		'unit_norm':('preproc',Normalizer())}
 
-	MAX_SCALES = 6
-	MAX_MOMENTS = 6
-	network_path_base = "../data/networks/cri"
-	genesets = ['auslander','LINCS']
-	geneset_base = "../data/genesets/"
-	base_path = "../data/expression/cri"
-	gex_units = 'log_tpm'
-	target_cutoff = 200
-	num_folds = 5
-	splitter = StratifiedKFold(n_splits = num_folds,shuffle = True,random_state = 1234)
+	postproc_map= {'robust':('postproc',RobustScaler()),
+		'center':('postproc',StandardScaler(with_std=False)),'standardize':('postproc',StandardScaler())}
 	
 
 
+
+	
 	for drug in utils.DRUG_TISSUE_MAP.keys():
 		results = defaultdict(list)
 		
 
+
 		for sparsity in ['sparse','dense']:
-		
 			for weighting in ['weighted','unweighted']:
 			
-				network_file = "{b}/{s}/{w}.pickle".format(b=network_path_base,s = sparsity,w = weighting)
-
-			
-				with open(network_file, 'rb') as istream:
-					G = pickle.load(istream)
-			
-			
+				netfile = "../data/networks/{sp}/{w}.pickle".format(sp=sparsity, w=weighting)
 				
-
+				with open(netfile,"rb") as istream:
+					PPI_Graph = pickle.load(istream)
+				
 				for tissue in utils.DRUG_TISSUE_MAP[drug]:
+					DE_file = "../data/genesets/{drug}_{tissue}_DE.csv".format(drug = drug, tissue = tissue)
+					expr_file = utils.make_data_file_name(data_dir,drug,tissue,'expression')
+					response_file = utils.make_data_file_name(data_dir,drug,tissue,'response')
+					expression_data = pd.read_csv(expr_file)
+					response_data = pd.read_csv(response_file)
 					
-					dataSet = io_utils.load_ICIDataSet(base_path, drug, tissue, gex_units)
-					genesets = genesets + [utils.DRUG_TARGET_MAP[drug]]
-					X = dataSet.X
-					y = dataSet.y
-							
-					for geneset in genesets:
-						if geneset.upper() in ['PD-L1','PD1','CTLA4']:
-						
-							geneset_string = 'target'
-							genes = geneset_utils.load_netprop_geneset(geneset_base,geneset,target_cutoff)
+					print(response_data['Run_ID'].eq(expression_data['Run_ID']).all())
 					
-						else:
+					DE_genes = pd.read_csv(DE_file)
+					# DE_genes = DE_genes[DE_genes['Rankcount']>=25]
+					DE_genes = DE_genes[DE_genes["thresh"]== 'strict']
+					# DE_genes['WeightedAvgRank'] = DE_genes['Ranksum']*(DE_genes['total.iter']/DE_genes['Rankcount'])
+					
+					# DE_genes.sort_values('WeightedAvgRank',inplace=True)
 						
-							geneset_string = geneset
-							genes = geneset_utils.load_geneset(geneset_base, geneset)
-						
-						
-						common_features = list(set(genes).intersection(set(dataSet.genes_to_idx.keys())))
-						LCC_graph = graph_utils.harmonize_graph_and_geneset(G,common_features)
-						X_ = X[:,[dataSet.genes_to_idx[n] for n in LCC_graph.nodes()] ]
-						
-						A = nx.adjacency_matrix(LCC_graph).todense()
+					
+					gene_list = list(DE_genes['Gene'].values)
+					
+					common_genes = list(set(gene_list).intersection(set(expression_data.columns[1:])))
+					
+					
+					LCC_Graph = utils.harmonize_graph_and_geneset(PPI_Graph,common_genes)
 
-						matrix_list = [A]
-						matrix_names = ['raw']
-						if weighting == 'weighted':
-							A_normalized = A/np.amax(A)
-							matrix_list.append(A_normalized)
-							matrix_names.append('normalized')
+					X = np.log2(expression_data[[x for x in LCC_Graph.nodes()]].values+1)
+					
 
+					y = response_data['Response'].values
+					
+					A = nx.adjacency_matrix(LCC_Graph).todense()
 
-						for matrixName, A in zip(matrix_names,matrix_list):						
-							for maxScale in range(1,MAX_SCALES):
-								for maxMoment in range(1,MAX_MOMENTS):
-									for central in [True,False]:
-										for operator in ['diffu']:
-
-											transformer = DiffusionWMT(maxScale,maxMoment,A,operator,central)
-
-											graphTransform = FunctionTransformer(transformer.computeTransform)
-											
-											base_pipeline = [ ('scale1',StandardScaler()),('graphTransform',graphTransform),('scale2',StandardScaler())]
-											model_tuples = {'SVC':('clf',LinearSVC(C=1,dual='auto',class_weight = 'balanced')),
-											 'LR':('clf', LogisticRegression(C=1,class_weight = 'balanced'))}
+					matrix_list = [A]
+					matrix_names = ['raw']
+					
+					if weighting == 'weighted':
+						A_normalized = A/np.amax(A)
+						matrix_list.append(A_normalized)
+						A_string = A/1000
+						matrix_list.append(A_string)
+					
+					matrix_names.append('normalized')
+					matrix_names.append('string')
 
 
-											for model_name in model_tuples.keys():
-												classifier = [model_tuples[model_name]]
+					for matrixName, A in zip(matrix_names,matrix_list):						
+						for maxScale in range(1,MAX_SCALES):
+							for maxMoment in range(1,MAX_MOMENTS):
+								for central in [True,False]:
+									for operator in ['d','g']:
+										transformer = DiffusionWMT(maxScale,maxMoment,A,operator,central)
 										
-										
-												model = Pipeline(base_pipeline+classifier)
-												for i, (train_index, test_index) in enumerate(splitter.split(X_,y)):
-													X_train, y_train = X_[train_index,:], y[train_index]
-													X_test, y_test = X_[test_index,:], y[test_index]
-										
-									
+										for preproc in preproc_map.keys():
+											for postproc in postproc_map.keys():
+												print("preproc: {p}".format(p=preproc))
+												print("postproc: {p}".format(p=postproc))
+												print("operator: {o}".format(o=operator))
+												print("maxScale {j}".format(j=maxScale))
+												print("maxMoment {j}".format(j=maxMoment))
+												print("central moments? {c}".format(c=central))
+												print("matrix: {m}".format(m=matrixName))
+												pre_step = preproc_map[preproc]
+												post_step = postproc_map[postproc]
+												wave_step = ("wavemoment",FunctionTransformer(transformer.computeTransform))
+												model_step = ('clf',LogisticRegression(C = 0.5))
+
+												model = Pipeline([pre_step,wave_step,post_step,model_step])
+												
+												for i in tqdm.tqdm(range(n_iter),leave=False):
+													X_train, X_test, y_train, y_test =\
+														train_test_split(X,y,test_size = 0.8, stratify=y)
+
 													model.fit(X_train,y_train)
+													pred_bins = model.predict(X_test)
+													pred_probs = model.predict_proba(X_test)
+													
 
-													bin_preds = model.predict(X_test)
+													acc = accuracy_score(y_test,pred_bins)
+													tn, fp, fn, tp = confusion_matrix(y_test, pred_bins,labels = [0,1]).ravel()
+													
+													roc_auc = roc_auc_score(y_test,pred_probs[:,1])
+													brier = brier_score_loss(y_test, pred_probs[:,1])
+													logloss = log_loss(y_test,pred_probs[:,1])
 
-													acc = accuracy_score(y_test, bin_preds)
-													bal_acc = balanced_accuracy_score(y_test,bin_preds)
-											
-													if model_name == 'LR':
-														prob_preds = model.predict_proba(X_test)
-													try:
-														roc_auc = roc_auc_score(y_test,prob_preds[:,1])
-													except: 
-														roc_auc = -1 
-													else:
-														roc_auc = -1
+													bal_acc = balanced_accuracy_score(y_test,pred_bins)
+									
+												
+													results['iter'].append(i)
+													results['drug'].append(drug)
+													results['tissue'].append(tissue)
+													results['preproc'].append(preproc)
+													
+													results['postproc'].append(postproc)
+													results['max_scale'].append(maxScale)
+													results['max_moment'].append(maxMoment)
+													results['weighting'].append(weighting)
+													results['sparsity'].append(sparsity)
+													results['matrix'].append(matrixName)
+													
 
-												results['iter'].append(i)
-												results['drug'].append(drug)
-												results['tissue'].append(tissue)
-												results['max_moment'].append(maxMoment)
-												results['sparsity'].append(sparsity)
-												results['weighting'].append(weighting)
-												results['geneset'].append(geneset)
-												results['model'].append(model_name)
-												results['max_scale'].append(maxScale)
-												results['edge_weights'].append(matrixName)
-												results['acc'].append(acc)
-												results['bal_acc'].append(bal_acc)
-												results['roc_auc'].append(roc_auc)
-		df = pd.DataFrame(results)
+
+													results['acc'].append(acc)
+													results['bal_acc'].append(bal_acc)
+													results['tp'].append(tp)
+													results['tn'].append(tn)
+													results['fp'].append(fp)
+													results['fn'].append(fn)		
+													results['roc_auc'].append(roc_auc)
+													results['brier'].append(brier)
+													results['log_loss'].append(logloss)
+
+						df = pd.DataFrame(results)
+						df.to_csv("bingbong.csv")
+						sys.exit(1)
 		path = "../results/sensitivity/{d}".format(d=drug)
 		os.makedirs(path,exist_ok = True)
 		df.to_csv("{p}/{gex}_sensitivity.csv".format(p=path,gex = gex_units))
