@@ -1,5 +1,0 @@
-
-	 Started with 19045 genes
-	 Removed 7 ambiguous genes
-	 0 missing genes
-	 keeping 19038
