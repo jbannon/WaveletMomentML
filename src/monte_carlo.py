@@ -121,8 +121,8 @@ def main(
 				DE_genes = DE_genes[DE_genes['Count']>=countCutoff]
 				gene_list = list(DE_genes['Gene'].values)
 
-				common_genes = list(set(gene_list).intersection(set(expression_data.columns[1:])))
-				
+				# common_genes = list(set(gene_list).intersection(set(expression_data.columns[1:])))
+				common_genes = [x for x in gene_list if x in list(expression_data.columns[1:])]
 				# issues = list(set(expression_data.columns[1:]).difference(set(gene_list)))
 				# print("Gene list length: {L}".format(L =len(gene_list)))
 				# print("Common Genes length: {L}".format(L =len(common_genes)))

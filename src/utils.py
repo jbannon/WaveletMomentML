@@ -51,7 +51,8 @@ def harmonize_graph_and_geneset(
     ) -> nx.Graph:
     
 
-    common_genes = list(set(G.nodes).intersection(set(gene_set)))
+
+    common_genes = [x for x in list(G.nodes) if x in gene_set]
     # print(len(common_genes))
 
 
