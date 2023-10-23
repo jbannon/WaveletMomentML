@@ -1,5 +1,4 @@
 from sklearn.metrics import brier_score_loss, log_loss
-from sklearn.model_selection import LeaveOneOut
 import sys 
 import os 
 import argparse
@@ -20,7 +19,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 
-from WMTransform import WaveletMomentTransform, DiffusionWMT
+from WMTransform import WaveletMomentTransform, DiffusionWMT, GeometricWMT
 from collections import defaultdict
 from sklearn.metrics import confusion_matrix, roc_auc_score, auc, precision_recall_curve, accuracy_score
 
@@ -33,47 +32,80 @@ from sklearn.dummy import DummyClassifier
 def main(
 	config:Dict
 	)->None:
-
 	
-	drug, rng_seed, data_dir, rank_count_cutoff, fdr_string, n_iters, do_one_hop =\
+
+	"""
+	Experimental Parameters
+	"""
+	
+	drug: str
+	rngSeed: int 
+	dataDir: str
+	countCutoff:int 
+	pvalThresh: float 
+	numIters: int 
+	tissues: List[str]
+	doOneHop: bool 
+	testSize: float
+
+	"""
+	Network Parameters 
+	"""
+	edgeTypes: List[str]
+	graphDensities:List[str]
+	networkNorm:str
+	
+
+	"""
+	Wavelet Parameters
+	"""
+	numScales:int 
+	maxMoment:int
+	central: str
+	waveletType: str
+
+	""" 
+	Model Parameters
+	"""
+	model: str
+	preprocessingSteps: List[str]
+	cvCriterion:str
+
+	trainSizes = np.round(np.arange(0.75,0.95,0.05),2)
+	
+
+	drug, rngSeed, dataDir, countCutoff, pvalThresh, numIters, tissues, doOneHop =\
 	 	utils.unpack_parameters(config['EXPERIMENT_PARAMS'])
-	
-	edge_types, connectivity = utils.unpack_parameters(config['NETWORK_PARAMS'])
-	
-	J, p, central = utils.unpack_parameters(config['WAVELET_PARAMS'])
-	
-	rng = np.random.RandomState(seed = rng_seed)
-	tissues = utils.DRUG_TISSUE_MAP[drug]
-	
-	model, preproc, cv_criterion = utils.unpack_parameters(config['MODEL_PARAMS'])
 
-
+	edgeTypes, graphDensities, networkNorm = utils.unpack_parameters(config['NETWORK_PARAMS'])
 	
+	numScales, maxMoment, central, waveletType = utils.unpack_parameters(config['WAVELET_PARAMS'])	
 	
-
-
+	model, preprocessingSteps, cvCriterion = utils.unpack_parameters(config['MODEL_PARAMS'])
 	
-
-	for et in edge_types:
-		for sp in connectivity:
+	rng = np.random.RandomState(seed = rngSeed)
+	
+	for edgeType in edgeTypes:
+		for density in graphDensities:
 			
-
-			netfile = "../data/networks/{sp}/{et}.pickle".format(sp = sp, et = et)
+			netfile = "../data/networks/{sp}/{et}.pickle".format(sp = density, et = edgeType)
+			
 			with open(netfile,"rb") as istream:
 				PPI_Graph = pickle.load(istream)
 			
-			
-			res_base = "../results/mono_classification/loo/{d}/{w}/{s}/".format(d=drug,w=et,s=sp)
+			results = defaultdict(list)
+			res_base = "../results/mono_classification/paucity/{d}/{e}/{c}/{w}/".format(d=drug,e=edgeType,c=density,w=waveletType)
 			os.makedirs(res_base, exist_ok=True)
-			
 
-			for tissue in tissues:
-				
+
+		
+			for tissue in tqdm.tqdm(tissues,total = len(tissues)):
+				# print(tissue)
 
 				DE_file = "../data/genesets/{drug}_{tissue}_DE.csv".format(drug = drug, tissue = tissue)
-				expr_file = utils.make_data_file_name(data_dir,drug,tissue,'expression')
-				response_file = utils.make_data_file_name(data_dir,drug,tissue,'response')
-				immune_feature_file = utils.make_data_file_name(data_dir, drug,tissue,'immune_features')
+				expr_file = utils.make_data_file_name(dataDir,drug,tissue,'expression')
+				response_file = utils.make_data_file_name(dataDir,drug,tissue,'response')
+				immune_feature_file = utils.make_data_file_name(dataDir, drug,tissue,'immune_features')
 				
 
 
@@ -85,22 +117,20 @@ def main(
 				immune_features.columns =['Run_ID','IMPRES','MIRACLE']
 
 				
-
 				
-				DE_genes = DE_genes[DE_genes["thresh"] == fdr_string]
 				
-				DE_genes = DE_genes[DE_genes['Rankcount']>=rank_count_cutoff]
-				
-				DE_genes['AvgRank'] = DE_genes['Ranksum']/DE_genes['Rankcount']
-				
-				DE_genes.sort_values('AvgRank',inplace=True)
-				DE_genes.reset_index(drop=True,inplace=True)
-				
-
+				DE_genes = DE_genes[DE_genes["Thresh.Value"] == pvalThresh]
+				DE_genes = DE_genes[DE_genes['Count']>=countCutoff]
 				gene_list = list(DE_genes['Gene'].values)
 
 				common_genes = list(set(gene_list).intersection(set(expression_data.columns[1:])))
-				if do_one_hop:
+				
+				# issues = list(set(expression_data.columns[1:]).difference(set(gene_list)))
+				# print("Gene list length: {L}".format(L =len(gene_list)))
+				# print("Common Genes length: {L}".format(L =len(common_genes)))
+
+	
+				if doOneHop:
 					seeds = [x for x in common_genes if x in PPI_Graph.nodes()]
 					one_hop = [x for x in seeds]
 					for n in seeds:
@@ -108,13 +138,18 @@ def main(
 						one_hop.extend([x for x in nbrs])
 					common_genes = one_hop
 				
+					
 				LCC_Graph = utils.harmonize_graph_and_geneset(PPI_Graph,common_genes)
 				# print("LCC Nodes : {L}".format(L =len(LCC_Graph.nodes)))
-
-
-				results = defaultdict(list)				
 				
-				for feature in tqdm.tqdm(['TARGET','IMPRES','MIRACLE','WM','WM_Norm']): #'DE','LCC'
+
+
+				
+
+
+				
+				for feature in tqdm.tqdm(['WM','WM_Norm','TARGET','IMPRES',
+					'MIRACLE','LCC','DE','WM_Robust','WM_Standard', 'WM_Center'], leave = False):
 					if feature in ['IMPRES','MIRACLE']:
 						X = immune_features[feature].values.reshape(-1,1)
 					elif feature == 'TARGET':
@@ -124,49 +159,115 @@ def main(
 						X = np.log2(expression_data[gene_list].values+1)
 					elif feature == 'LCC':
 						X = np.log2(expression_data[[x for x in list(LCC_Graph.nodes)]].values+1)
-					elif feature in ['WM','WM_Norm']:
+					elif feature in ['WM','WM_Norm','WM_Robust','WM_Standard']:
 						X = np.log2(expression_data[[x for x in list(LCC_Graph.nodes)]].values+1)
 						if feature == 'WM_Norm':
-							norm_transform = Normalizer()
-							X = norm_transform.fit_transform(X)
+							transform = Normalizer()
+							X = transform.fit_transform(X)
+						elif feature == 'WM_Robust':
+							transform = RobustScaler()
+							X = transform.fit_transform(X)
+						elif feature == 'WM_Standard':
+							transform = StandardScaler()
+							X = transform.fit_transform(X)
+						elif feature == 'WM_Center':
+							transform = StandardScaler(with_std = False)
+							X = transform.fit_transform(X)
+
 						A = nx.adjacency_matrix(LCC_Graph).todense()
-						if et =='weighted':
-							A = A/np.amax(A)
-						DWMT = DiffusionWMT(numScales = J,maxMoment =p, adjacency_matrix = A, central=central)
-						X = DWMT.computeTransform(X)
+						if edgeType =='weighted':
+							scale_factor = 1
+							scale_factor = 1000 if networkNorm.upper() == "STRING" else scale_factor
+							scale_factor = np.amax(A) if networkNorm.upper() == "MAX" else scale_factor
+							A = A/scale_factor
+
+						if waveletType.lower()=='diffusion':
+							WMT = DiffusionWMT(numScales = numScales,
+							maxMoment = maxMoment, 
+							adjacency_matrix = A, 
+							central=central)
+						elif waveletType.lower() == 'geometric':
+							WMT = GeometricWMT(numScales = numScales,
+							maxMoment = maxMoment, 
+							adjacency_matrix = A, 
+							central=central)
+
+						X = WMT.computeTransform(X)
 
 					y = response_data['Response'].values
-					
-					
-					
-					classifier, param_grid = utils.make_model_and_param_grid(model,preproc,weight_LR = False)							
-					
-					loo = LeaveOneOut()
-					
-					
-					for i, (train_index, test_index) in tqdm.tqdm(enumerate(loo.split(X)),total = X.shape[0],leave=False):
-						
-						X_train, X_test = X[train_index,:], X[test_index,:]
-						y_train, y_test = y[train_index], y[test_index]
-						
-						clf = GridSearchCV(classifier,param_grid,scoring = cv_criterion)
-						clf.fit(X_train,y_train)
 				
+					for balanceWeights in [True,False]:
+						for step in preprocessingSteps:
+							classifier, paramGrid = utils.make_model_and_param_grid(model,step,weight_LR = balanceWeights)							
+							for trainSize in trainSizes:
+								# print(trainSize)
+								for i in tqdm.tqdm(range(numIters),leave = False):
+									X_train, X_test, y_train, y_test =\
+										train_test_split(X,y,train_size = trainSize, stratify=y)
+									# print(y_train)
+									# print(y_test)
 						
-						
+									try:
+										clf = GridSearchCV(classifier,paramGrid,scoring = cvCriterion, verbose = 0)
+										clf.fit(X_train,y_train)
+									except Exception as error:
+										print(error)
+										print(step)
+										print(feature)
+										print(np.isnan(X))
+										sys.exit(1)
+								
+									pred_bins = clf.best_estimator_.predict(X_test)
+									pred_probs = clf.best_estimator_.predict_proba(X_test)
+								
 
-						pred_bins = clf.best_estimator_.predict(X_test)
-						pred_probs = clf.best_estimator_.predict_proba(X_test)
-						results['feature'].append(feature)
-						results['i'].append(i)
-						results['y_true'].append(y_test[0])
-						results['pred_bin'].append(pred_bins[0])
-						results['pred_prob'].append(pred_probs[:,1][0])
+									# binary results
+									acc = accuracy_score(y_test,pred_bins)
+									tn, fp, fn, tp = confusion_matrix(y_test, pred_bins,labels = [0,1]).ravel()
+								
+									try:
+										roc_auc = roc_auc_score(y_test,pred_probs[:,1])
+									except:
+										print(y_train)
+										print(np.amax(X))
+										sys.exit(1)
+								
+									brier = brier_score_loss(y_test, pred_probs[:,1])
+									logloss = log_loss(y_test,pred_probs[:,1])
+								
+								
+									results['iter'].append(i)
+									results['drug'].append(drug)
+									results['tissue'].append(tissue)
+									results['model'].append(model)
+									results['penalty'].append(clf.best_params_['clf__C'])
+									results['preproc'].append(step)
+									results['J'].append(numScales)
+									results['p'].append(maxMoment)
+									results['balance_weights'].append(balanceWeights)
+									results['feature'].append(feature)
+									results['feat_dim'].append(X_train.shape[1])
+									results['network_weight'].append(edgeType)
+									results['connectivity'].append(density)
+									results['train_size'].append(trainSize)
 
+									results['acc'].append(acc)
+									results['tp'].append(tp)
+									results['tn'].append(tn)
+									results['fp'].append(fp)
+									results['fn'].append(fn)		
+									results['roc_auc'].append(roc_auc)
+									results['brier'].append(brier)
+									results['log_loss'].append(logloss)
 
-				df = pd.DataFrame(results)
-				one_hop_string = "_OH" if do_one_hop else ""
-				df.to_csv("{r}/loo{o}.csv".format(r=res_base,o=one_hop_string))
+							
+							
+				# df = pd.DataFrame(results)
+				# one_hop_string = "_OH" if doOneHop else ""
+				# df.to_csv("{r}/paucity_{o}.csv".format(w= waveletType, r=res_base,o=one_hop_string))
+			
+	
+
 
 
 if __name__ == '__main__':

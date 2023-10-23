@@ -127,67 +127,36 @@ class DiffusionWMT(WaveletMomentTransform):
 		self.H = H 
 
 
-class DiffusionWaveletExpansion():
-	def __init__(self,
+
+class GeometricWMT(WaveletMomentTransform):
+	def __init__(
+		self,
 		numScales:int,
-		adjacency_matrix:np.ndarray):
+		maxMoment:int,
+		adjacency_matrix:np.ndarray,
+		central:bool = True):
 
-		assert adjacency_matrix.shape[0] == adjacency_matrix.shape[1], "adjacency matrix must be square"
-		# assert (adjacency_matrix == adjacency_matrix.T).all(), "adjacency_matrix must be symmetric"
+		super().__init__(numScales, maxMoment, adjacency_matrix,central)
 
 
-		self.numScales = numScales
-		self.adjacency_matrix = adjacency_matrix.copy()
-		
-		
 		N  = self.adjacency_matrix.shape[0]
 		
 		max_J = self.numScales
 		
-		D_invsqrt =  np.diag(1/np.sqrt(np.sum(self.adjacency_matrix,axis=1)))
+		D_inv =  np.diag(1/np.sum(self.adjacency_matrix,axis=1))
 		
-		A = D_invsqrt @ self.adjacency_matrix @ D_invsqrt
 		
-	
-		T = 0.5*(np.eye(A.shape[0])+A)
+		P = 0.5*(np.eye(N) + adjacency_matrix @ D_inv)
 		
-		H = (np.eye(N) - T).reshape(1, N, N)
+		H = (np.eye(N) - P).reshape(1, N, N)
 
 		
+
+		
+
 		for j in range(1,max_J):
 			# print("computing {j}".format(j=j))
-			new_wavelet = np.linalg.matrix_power(T,2**(j-1)) - np.linalg.matrix_power(T,2**j)
+			new_wavelet = np.linalg.matrix_power(P,2**(j-1)) - np.linalg.matrix_power(P,2**j)
 			H = np.concatenate((H,new_wavelet.reshape(1,N,N)),axis=0) if H.size else new_wavelet.reshape(1,N,N)
-		
-		
-		self.H = H 
 
-
-
-
-
-	def computeTransform(self,
-		X:np.ndarray,
-		) -> np.ndarray:
-		
-		S = X.shape[0]
-		N = X.shape[1]
-		
-
-		new_X = self.H @ X.T
-		X_res= np.array([])
-		
-		for i in range(new_X.shape[0]):
-			X_res= np.hstack( [X_res, new_X[i,:,:].T]) if X_res.size else new_X[i,:,:].T
-		
-		atoms = np.array([])
-		for i in range(self.H.shape[0]):
-			atoms = np.vstack( [atoms, self.H[i,:,:]]) if atoms.size else self.H[i,:,:]
-
-		
-		
-		
-		
-		return X_res, atoms 
-
-		
+		self.H = H

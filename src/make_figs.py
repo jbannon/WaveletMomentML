@@ -32,7 +32,7 @@ plt.title("Atezo Leave One Out BLCA")
 plt.savefig("../figs/Atezo_LOO.png")
 plt.close()
 # plt.show()
-sys.exit(1)
+
 
 # temp = df[df['feature']=='TARGET']
 # fpr, tpr, thresholds = roc_curve(temp['y_true'].values, 1-temp['pred_prob'].values, pos_label=1)
@@ -56,7 +56,7 @@ sys.exit(1)
 
 
 
-df = pd.read_csv("../results/mono_classification/monte_carlo/Atezo/weighted/sparse/mono_classification.csv")
+df = pd.read_csv("../results/mono_classification/monte_carlo/Atezo/weighted/sparse/mono_classification_OH.csv")
 
 drug = 'Atezo'
 
@@ -92,5 +92,5 @@ for tissue in pd.unique(df['tissue']):
 					ax.text(xtick,max_y - 0.055, n_dim, 
 						horizontalalignment='center',size='x-small',color='black',weight='semibold')
 			
-			plt.savefig("{p}/{m}_{b}".format(p=fig_path, m =ms_map[measure],b = bal_string))
+			plt.savefig("{p}/{m}_{b}_OH.png".format(p=fig_path, m =ms_map[measure],b = bal_string))
 			plt.close()
