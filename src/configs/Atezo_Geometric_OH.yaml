@@ -19,7 +19,7 @@ WAVELET_PARAMS:
   J: 3
   p: 4
   central: False
-  wavelet_type: 'Diffusion'
+  wavelet_type: 'Geometric'
 
 
 MODEL_PARAMS:

@@ -216,6 +216,7 @@ def main(
 								pred_probs = clf.best_estimator_.predict_proba(X_test)
 								results['feature'].append(feature)
 								results['i'].append(i)
+								results['tissue'].append(tissue)
 								results['y_true'].append(y_test[0])
 								results['pred_bin'].append(pred_bins[0])
 								results['pred_prob'].append(pred_probs[:,1][0])
