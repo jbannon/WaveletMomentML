@@ -262,9 +262,9 @@ def main(
 
 							
 							
-				# df = pd.DataFrame(results)
-				# one_hop_string = "_OH" if doOneHop else ""
-				# df.to_csv("{r}/paucity_{o}.csv".format(w= waveletType, r=res_base,o=one_hop_string))
+			df = pd.DataFrame(results)
+			one_hop_string = "_OH" if doOneHop else ""
+			df.to_csv("{r}/paucity_{o}.csv".format(w= waveletType, r=res_base,o=one_hop_string))
 			
 	
 
