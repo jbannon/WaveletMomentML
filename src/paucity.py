@@ -118,9 +118,16 @@ def main(
 
 				
 				
-				
 				DE_genes = DE_genes[DE_genes["Thresh.Value"] == pvalThresh]
-				DE_genes = DE_genes[DE_genes['Count']>=countCutoff]
+
+				q = (1.0*nGenes)/len(pd.unique(DE_genes['Gene']))
+				thresh = 1-q
+				qval = DE_genes['Count'].quantile(thresh)
+					
+
+
+
+				DE_genes = DE_genes[DE_genes['Count']>=qval]
 				gene_list = list(DE_genes['Gene'].values)
 
 				common_genes = [x for x in gene_list if x in list(expression_data.columns[1:])]
