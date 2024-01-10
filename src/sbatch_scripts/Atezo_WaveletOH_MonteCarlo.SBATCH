@@ -16,4 +16,4 @@ module purge
 singularity exec --nv \
 	    --overlay /scratch/jjb509/WaveletMomentML/src/wavelet_moment_overlay.ext3:ro \
 	    /scratch/work/public/singularity/cuda11.6.124-cudnn8.4.0.27-devel-ubuntu20.04.4.sif\
-	    /bin/bash -c "source /ext3/env.sh; python monte_carlo_baselines.py -config ./configs/Atezo_Wavelet_OH.yaml"
+	    /bin/bash -c "source /ext3/env.sh; python monte_carlo.py -config ./configs/Atezo_Wavelet_OH.yaml"
