@@ -15,7 +15,7 @@ MODEL_PARAMS:
 
 
 PAUCITY_PARAMS:
-  min_train_percent: 0.10
+  min_train_percent: 0.20
   max_train_percent: 0.95
   step_size: 0.05
   round_value: 2

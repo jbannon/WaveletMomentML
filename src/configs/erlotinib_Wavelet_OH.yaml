@@ -1,12 +1,12 @@
 EXPERIMENT_PARAMS:
-  drug: 'Atezo'
+  drug: 'erlotinib'
   rng_seed: 1234
-  data_dir: "../data/expression/cri/"
+  data_dir: "../data/expression/ccle/"
   pval_thresh: 0.05
   prob_thresh: 0.8
   train_pct: 0.8
   n_iters: 10
-  tissues: ['BLCA','KIRC']
+  tissues: ['BRCA','LUAD']
   do_one_hop: True
   nGenes: 200
   
@@ -18,7 +18,7 @@ PAUCITY_PARAMS:
 
   
 NETWORK_PARAMS:
-  net_dir: "../data/networks/cri"
+  net_dir: "../data/networks/ccle"
   edge_types: ['weighted','unweighted']
   graph_densities: ['sparse','tight']
   normalization: 'MAX'

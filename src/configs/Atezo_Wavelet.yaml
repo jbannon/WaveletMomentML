@@ -11,8 +11,8 @@ EXPERIMENT_PARAMS:
   nGenes: 200
   
 PAUCITY_PARAMS:
-  min_train_percent: 0.50
-  max_train_percent: 0.95
+  min_train_percent: 0.20
+  max_train_percent: 0.9
   step_size: 0.1
   round_value: 2
 

@@ -3,9 +3,9 @@ EXPERIMENT_PARAMS:
   tissues: ['BRCA','LUAD']
   rng_seed: 1234
   data_dir: "../data/expression/ccle/"
-  num_iters: 3
+  num_iters: 100
   train_percentage: 0.8
-  feature_columns: ['2-hydroxyglutarate','lactate','glutamine', 'asparagine', 'aspartate', 'tryptophan', 'methionine']
+  feature_columns: []
   feature_file_name: 'metab_features'
 
 
