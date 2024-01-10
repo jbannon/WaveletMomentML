@@ -1,0 +1,21 @@
+EXPERIMENT_PARAMS:
+  drug: 'Pembro'
+  tissues: ['SKCM','STAD']
+  rng_seed: 1234
+  data_dir: "../data/expression/cri/"
+  num_iters: 100
+  train_percentage: 0.8
+  feature_columns: ['IMPRES','Miracle']
+  feature_file_name: 'immune_features'
+
+
+MODEL_PARAMS:
+  models: ['LR','KNN']
+  cv_criterion: 'roc_auc'
+
+
+PAUCITY_PARAMS:
+  min_train_percent: 0.10
+  max_train_percent: 0.95
+  step_size: 0.05
+  round_value: 2

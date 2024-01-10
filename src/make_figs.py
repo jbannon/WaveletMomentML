@@ -9,48 +9,6 @@ import sys
 
 
 
-df = pd.read_csv("../results/mono_classification/loo/Atezo/weighted/sparse/loo_OH.csv")
-
-
-
-# print(df)
-# print(pd.unique(df['feature']))
-# for tissue in pd.unique(df['tissue']):
-for feat in ['MIRACLE','WM','WM_Norm','TARGET']:
-	temp = df[df['feature']==feat]
-	if feat == 'TARGET':
-		fpr, tpr, thresholds = roc_curve(temp['y_true'].values, 1-temp['pred_prob'].values, pos_label=1)
-		auc = roc_auc_score(temp['y_true'], 1-temp['pred_prob'])
-	else:
-		fpr, tpr, thresholds = roc_curve(temp['y_true'].values, temp['pred_prob'].values, pos_label=1)
-		auc = roc_auc_score(temp['y_true'], temp['pred_prob'])
-	plt.plot(fpr,tpr,label = "{f} - {s}".format(f=feat,s=np.round(auc,2)))
-
-plt.plot([0, 1], ls="--")
-plt.legend(loc="upper left")
-plt.title("Atezo Leave One Out BLCA")
-plt.savefig("../figs/Atezo_LOO.png")
-plt.close()
-# plt.show()
-
-
-# temp = df[df['feature']=='TARGET']
-# fpr, tpr, thresholds = roc_curve(temp['y_true'].values, 1-temp['pred_prob'].values, pos_label=1)
-# plt.plot(fpr, tpr)
-
-# temp = df[df['feature']=='MIRACLE']
-# fpr, tpr, thresholds = roc_curve(temp['y_true'].values, 1-temp['pred_prob'].values, pos_label=1)
-# plt.plot(fpr, tpr)
-# plt.ylabel('True Positive Rate')
-# plt.xlabel('False Positive Rate')
-# plt.show()
-
-# sys.exit(1)
-
-
-
-
-
 
 
 

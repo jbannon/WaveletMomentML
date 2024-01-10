@@ -39,183 +39,146 @@ def main(
 	"""
 	
 	drug: str
-	rngSeed: int 
-	dataDir: str
-	countCutoff:int 
-	pvalThresh: float 
-	numIters: int 
+	rng_seed: int 
+	data_dir: str
+	
+	pval_thresh: float 
+	num_iters: int 
 	tissues: List[str]
-	doOneHop: bool 
-	testSize: float
+	do_one_hop: bool 
+	test_size: float
+	num_genes:int
 
 	"""
 	Network Parameters 
 	"""
-	edgeTypes: List[str]
-	graphDensities:List[str]
-	networkNorm:str
+	edge_types: List[str]
+	graph_densities:List[str]
+	edge_norm_method:str
 	
 
 	"""
 	Wavelet Parameters
 	"""
-	numScales:int 
-	maxMoment:int
+	num_scales:int 
+	max_moment:int
 	central: str
-	waveletType: str
+	wavelet_type: str
 
 	""" 
 	Model Parameters
 	"""
 	model: str
-	preprocessingSteps: List[str]
-	cvCriterion:str
-
-	trainSizes = np.round(np.arange(0.75,0.95,0.05),2)
+	preprocessing_steps: List[str]
+	cv_criterion:str
 	
 
-	drug, rngSeed, dataDir, countCutoff, pvalThresh, numIters, tissues, doOneHop =\
+	drug, rng_seed, data_dir, pval_thresh, prob_thresh, train_pct, num_iters, tissues, do_one_hop, num_genes =\
 	 	utils.unpack_parameters(config['EXPERIMENT_PARAMS'])
 
-	edgeTypes, graphDensities, networkNorm = utils.unpack_parameters(config['NETWORK_PARAMS'])
+	net_dir, edge_types, graph_densities, network_norm = utils.unpack_parameters(config['NETWORK_PARAMS'])
 	
-	numScales, maxMoment, central, waveletType = utils.unpack_parameters(config['WAVELET_PARAMS'])	
+	num_scales, max_moment, central, wavelet_type = utils.unpack_parameters(config['WAVELET_PARAMS'])	
 	
-	model, preprocessingSteps, cvCriterion = utils.unpack_parameters(config['MODEL_PARAMS'])
+	models,  cv_criterion = utils.unpack_parameters(config['MODEL_PARAMS'])
 	
-	rng = np.random.RandomState(seed = rngSeed)
+	min_size, max_size, step, round_value = utils.unpack_parameters(config['PAUCITY_PARAMS'])
 	
-	for edgeType in edgeTypes:
-		for density in graphDensities:
-			
-			netfile = "../data/networks/{sp}/{et}.pickle".format(sp = density, et = edgeType)
-			
-			with open(netfile,"rb") as istream:
-				PPI_Graph = pickle.load(istream)
-			
-			results = defaultdict(list)
-			res_base = "../results/mono_classification/paucity/{d}/{e}/{c}/{w}/".format(d=drug,e=edgeType,c=density,w=waveletType)
-			os.makedirs(res_base, exist_ok=True)
 
+
+	rng = np.random.RandomState(seed = rng_seed)
+	
+	train_sizes = np.round(np.arange(min_size,max_size,step),round_value)
+	for tissue in tqdm.tqdm(tissues,total = len(tissues)):
+		
+		DE_file = "../data/genesets/{drug}_{tissue}_DE.csv".format(drug = drug, tissue = tissue)
+		expr_file = utils.make_data_file_name(data_dir,drug,tissue,'expression')
+		response_file = utils.make_data_file_name(data_dir,drug,tissue,'response')
+		
+		
+		expression_data = pd.read_csv(expr_file)
+		response_data = pd.read_csv(response_file)	
+		DE_data = pd.read_csv(DE_file,index_col=0)
+		
+		
+		
+		
+		
+		DE_data = DE_data[DE_data["Thresh.Value"] == pval_thresh]
 
 		
-			for tissue in tqdm.tqdm(tissues,total = len(tissues)):
-				# print(tissue)
+		gene_list = utils.empirical_bayes_gene_selection(DE_data,prob_thresh)
 
-				DE_file = "../data/genesets/{drug}_{tissue}_DE.csv".format(drug = drug, tissue = tissue)
-				expr_file = utils.make_data_file_name(dataDir,drug,tissue,'expression')
-				response_file = utils.make_data_file_name(dataDir,drug,tissue,'response')
-				immune_feature_file = utils.make_data_file_name(dataDir, drug,tissue,'immune_features')
-				
+		common_genes = [x for x in gene_list if x in list(expression_data.columns[1:])]
+		results = defaultdict(list)
+		res_dir = "../results/paucity/{d}/{t}".format(d=drug,t=tissue)
+		os.makedirs(res_dir, exist_ok=True)
 
-
-				expression_data = pd.read_csv(expr_file)
-				response_data = pd.read_csv(response_file)
-				immune_features = pd.read_csv(immune_feature_file)
-				DE_genes = pd.read_csv(DE_file,index_col=0)
-				immune_features = immune_features[['Run_ID','IMPRES','Miracle']]
-				immune_features.columns =['Run_ID','IMPRES','MIRACLE']
-
-				
-				
-				DE_genes = DE_genes[DE_genes["Thresh.Value"] == pvalThresh]
-
-				q = (1.0*nGenes)/len(pd.unique(DE_genes['Gene']))
-				thresh = 1-q
-				qval = DE_genes['Count'].quantile(thresh)
-					
-
-
-
-				DE_genes = DE_genes[DE_genes['Count']>=qval]
-				gene_list = list(DE_genes['Gene'].values)
-
-				common_genes = [x for x in gene_list if x in list(expression_data.columns[1:])]
-				
-				# issues = list(set(expression_data.columns[1:]).difference(set(gene_list)))
-				# print("Gene list length: {L}".format(L =len(gene_list)))
-				# print("Common Genes length: {L}".format(L =len(common_genes)))
-
-	
-				if doOneHop:
+		for edge_type in edge_types:
+			for density in graph_densities:
+			
+				netfile = "{n}/{sp}/{et}.pickle".format(n=net_dir,sp = density, et = edge_type)
+			
+				with open(netfile,"rb") as istream:
+					PPI_Graph = pickle.load(istream)
+			
+			
+				if do_one_hop:
 					seeds = [x for x in common_genes if x in PPI_Graph.nodes()]
 					one_hop = [x for x in seeds]
 					for n in seeds:
 						nbrs = PPI_Graph.neighbors(n)
 						one_hop.extend([x for x in nbrs])
-					common_genes = one_hop
-				
+					working_geneset = one_hop
+				else:
+					working_geneset = [x for x in common_genes]
 					
-				LCC_Graph = utils.harmonize_graph_and_geneset(PPI_Graph,common_genes)
-				# print("LCC Nodes : {L}".format(L =len(LCC_Graph.nodes)))
+				LCC_Graph = utils.harmonize_graph_and_geneset(PPI_Graph,working_geneset)
+					
 				
-
-
 				
-
-
-				
-				for feature in tqdm.tqdm(['WM','WM_Norm','TARGET','IMPRES',
-					'MIRACLE','LCC','DE','WM_Robust','WM_Standard', 'WM_Center'], leave = False):
-					if feature in ['IMPRES','MIRACLE']:
-						X = immune_features[feature].values.reshape(-1,1)
-					elif feature == 'TARGET':
-						target_gene = utils.TARGET_GENE_MAP[utils.DRUG_TARGET_MAP[drug]]
-						X = np.log2(expression_data[target_gene].values + 1).reshape(-1,1)
-					elif feature == 'DE':
+				for feature in tqdm.tqdm(['WM','DE','LCC','LCC-PCA'],leave = False):
+					if feature == 'DE':
 						X = np.log2(expression_data[gene_list].values+1)
-					elif feature == 'LCC':
+					elif feature in ['LCC','LCC-PCA']:
 						X = np.log2(expression_data[[x for x in list(LCC_Graph.nodes)]].values+1)
-					elif feature in ['WM','WM_Norm','WM_Robust','WM_Standard']:
+					elif feature in ['WM']:
 						X = np.log2(expression_data[[x for x in list(LCC_Graph.nodes)]].values+1)
-						if feature == 'WM_Norm':
-							transform = Normalizer()
-							X = transform.fit_transform(X)
-						elif feature == 'WM_Robust':
-							transform = RobustScaler()
-							X = transform.fit_transform(X)
-						elif feature == 'WM_Standard':
-							transform = StandardScaler()
-							X = transform.fit_transform(X)
-						elif feature == 'WM_Center':
-							transform = StandardScaler(with_std = False)
-							X = transform.fit_transform(X)
 
 						A = nx.adjacency_matrix(LCC_Graph).todense()
-						if edgeType =='weighted':
+						if edge_type =='weighted':
 							scale_factor = 1
-							scale_factor = 1000 if networkNorm.upper() == "STRING" else scale_factor
-							scale_factor = np.amax(A) if networkNorm.upper() == "MAX" else scale_factor
+							scale_factor = 100 if network_norm.upper() == "STRING" else scale_factor
+							scale_factor = np.amax(A) if network_norm.upper() == "MAX" else scale_factor
 							A = A/scale_factor
 
-						if waveletType.lower()=='diffusion':
-							WMT = DiffusionWMT(numScales = numScales,
-							maxMoment = maxMoment, 
+						
+						WMT = DiffusionWMT(numScales = num_scales,
+							maxMoment = max_moment, 
 							adjacency_matrix = A, 
 							central=central)
-						elif waveletType.lower() == 'geometric':
-							WMT = GeometricWMT(numScales = numScales,
-							maxMoment = maxMoment, 
-							adjacency_matrix = A, 
-							central=central)
-
 						X = WMT.computeTransform(X)
+
 
 					y = response_data['Response'].values
 				
-					for balanceWeights in [True,False]:
-						for step in preprocessingSteps:
-							classifier, paramGrid = utils.make_model_and_param_grid(model,step,weight_LR = balanceWeights)							
-							for trainSize in trainSizes:
+					for model in models:
+						if feature == 'LCC-PCA':
+							pca_dim = max_moment*num_scales
+							classifier, param_grid = utils.make_model_and_param_grid(model,do_pca =True, pca_dim = pca_dim)							
+						else:
+							classifier, param_grid = utils.make_model_and_param_grid(model)						
+							
+							for train_size in train_sizes:
 								# print(trainSize)
-								for i in tqdm.tqdm(range(numIters),leave = False):
+								for i in tqdm.tqdm(range(num_iters),leave = False):
 									X_train, X_test, y_train, y_test =\
-										train_test_split(X,y,train_size = trainSize, stratify=y)
+										train_test_split(X,y,train_size = train_size, stratify=y)
 									# print(y_train)
 									# print(y_test)
 						
 									try:
-										clf = GridSearchCV(classifier,paramGrid,scoring = cvCriterion, verbose = 0)
+										clf = GridSearchCV(classifier,param_grid,scoring = cv_criterion, verbose = 0)
 										clf.fit(X_train,y_train)
 									except Exception as error:
 										print(error)
@@ -247,16 +210,13 @@ def main(
 									results['drug'].append(drug)
 									results['tissue'].append(tissue)
 									results['model'].append(model)
-									results['penalty'].append(clf.best_params_['clf__C'])
-									results['preproc'].append(step)
-									results['J'].append(numScales)
-									results['p'].append(maxMoment)
-									results['balance_weights'].append(balanceWeights)
+									results['J'].append(num_scales)
+									results['p'].append(max_moment)
 									results['feature'].append(feature)
 									results['feat_dim'].append(X_train.shape[1])
-									results['network_weight'].append(edgeType)
+									results['network_weight'].append(edge_type)
 									results['connectivity'].append(density)
-									results['train_size'].append(trainSize)
+									results['train_size'].append(train_size)
 
 									results['acc'].append(acc)
 									results['tp'].append(tp)
@@ -269,9 +229,9 @@ def main(
 
 							
 							
-			df = pd.DataFrame(results)
-			one_hop_string = "_OH" if doOneHop else ""
-			df.to_csv("{r}/paucity_{o}.csv".format(w= waveletType, r=res_base,o=one_hop_string))
+		df = pd.DataFrame(results)
+		one_hop_string = "_OH" if doOneHop else ""
+		df.to_csv("{r}/paucity_{o}.csv".format(r=res_base,o=one_hop_string))
 			
 	
 
