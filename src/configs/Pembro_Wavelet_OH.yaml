@@ -6,7 +6,7 @@ EXPERIMENT_PARAMS:
   prob_thresh: 0.8
   train_pct: 0.8
   n_iters: 10
-  tissues: ['BLCA','KIRC']
+  tissues: ['STAD','SKCM']
   do_one_hop: True
   nGenes: 200
   

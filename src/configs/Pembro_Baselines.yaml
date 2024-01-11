@@ -1,6 +1,6 @@
 EXPERIMENT_PARAMS:
   drug: 'Pembro'
-  tissues: ['STAD']
+  tissues: ['STAD','SKCM']
   rng_seed: 1234
   data_dir: "../data/expression/cri/"
   num_iters: 100
