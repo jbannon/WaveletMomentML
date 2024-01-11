@@ -257,8 +257,8 @@ def main(
 							
 							
 				df = pd.DataFrame(results)
-				one_hop_string = "_OH" if doOneHop else ""
-				df.to_csv("{r}/monte_carlo{o}.csv".format(w= waveletType, r=res_base,o=one_hop_string))
+				one_hop_string = "_OH" if do_one_hop else ""
+				df.to_csv("{r}/wavelets{o}.csv".format(w= waveletType, r=res_base,o=one_hop_string))
 			
 	
 

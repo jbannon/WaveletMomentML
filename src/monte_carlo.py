@@ -228,7 +228,7 @@ def main(
 							
 		df = pd.DataFrame(results)
 		one_hop_string = "_OH" if doOneHop else ""
-		df.to_csv("{r}/paucity_{o}.csv".format(r=res_base,o=one_hop_string))
+		df.to_csv("{r}/wavelets{o}.csv".format(r=res_base,o=one_hop_string))
 			
 	
 

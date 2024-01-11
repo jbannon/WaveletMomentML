@@ -1,0 +1,35 @@
+EXPERIMENT_PARAMS:
+  drug: 'Pembro'
+  rng_seed: 1234
+  data_dir: "../data/expression/cri/"
+  pval_thresh: 0.05
+  prob_thresh: 0.8
+  train_pct: 0.8
+  n_iters: 10
+  tissues: ['BLCA','KIRC']
+  do_one_hop: True
+  nGenes: 200
+  
+PAUCITY_PARAMS:
+  min_train_percent: 0.2
+  max_train_percent: 0.9
+  step_size: 0.1
+  round_value: 2
+
+  
+NETWORK_PARAMS:
+  net_dir: "../data/networks/cri"
+  edge_types: ['weighted','unweighted']
+  graph_densities: ['sparse','tight']
+  normalization: 'MAX'
+
+WAVELET_PARAMS:
+  J: 3
+  p: 4
+  central: True
+  wavelet_type: 'Diffusion'
+
+
+MODEL_PARAMS:
+  models: ['LR','KNN']
+  cv_criterion: 'roc_auc'

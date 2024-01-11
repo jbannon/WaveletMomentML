@@ -205,7 +205,7 @@ def main(
 							
 		df = pd.DataFrame(results)
 		one_hop_string = "_OH" if do_one_hop else ""
-		df.to_csv("{r}/wavelets_{o}.csv".format(r=res_dir,o=one_hop_string))
+		df.to_csv("{r}/wavelets{o}.csv".format(r=res_dir,o=one_hop_string))
 			
 	
 

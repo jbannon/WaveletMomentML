@@ -230,7 +230,7 @@ def main(
 							
 							
 		df = pd.DataFrame(results)
-		one_hop_string = "_OH" if doOneHop else ""
+		one_hop_string = "_OH" if do_one_hop else ""
 		df.to_csv("{r}/paucity_{o}.csv".format(r=res_base,o=one_hop_string))
 			
 	
